@@ -10,9 +10,7 @@ async function enableMocking() {
   if (import.meta.env.DEV) {
     const { worker } = await import("./mocks/browser.ts")
 
-    const preparedWorker = await worker.start()
-
-    return preparedWorker
+    return await worker.start()
   }
 }
 

@@ -1,12 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { http, HttpResponse } from "msw"
+import { http, bypass, HttpResponse } from "msw"
 
-const films =
-  ((globalThis as any).filmsMap as Map<number, Film>) ||
-  new Map([
-    [1, { id: "1", name: "Test film", description: "Test film", rating: 5 }],
-  ])
-;(globalThis as any).filmsMap = films
+const films = new Map([
+  [1, { id: "1", name: "Test film", description: "Test film", rating: 5 }],
+])
 
 const backendUrl = `http://localhost:3100`
 
@@ -71,5 +68,43 @@ export const handlers = [
           { status: 200 }
         )
       : HttpResponse.json({ message: "Film not found" }, { status: 404 })
+  }),
+  http.get(`${backendUrl}/cookies`, ({ cookies }) => {
+    return HttpResponse.json(cookies)
+  }),
+  http.get(`${backendUrl}/query`, ({ request }) => {
+    const url = new URL(request.url)
+
+    const id = url.searchParams.get("id")
+
+    return HttpResponse.json(id)
+  }),
+  http.get("${backendUrl}/user", async ({ request }) => {
+    const user = await fetch(bypass(request)).then((response) =>
+      response.json()
+    )
+
+    // or add tracking code, that writes data into localstorage or indexeddb
+
+    return HttpResponse.json({
+      id: user.id,
+      name: user.name,
+      role: "admin",
+    })
+  }),
+  http.get("${backendUrl}/dashboard", async ({ request }) => {
+    const proxyUrl = new URL("/proxy", location.origin)
+
+    const proxyRequest = new Request(proxyUrl, {
+      headers: {
+        "Content-Type":
+          request.headers.get("content-type") || "application/json",
+        "X-Proxy-Header": "true",
+      },
+    })
+
+    const originalResponse = await fetch(bypass(proxyRequest))
+
+    return HttpResponse.json(originalResponse)
   }),
 ]
